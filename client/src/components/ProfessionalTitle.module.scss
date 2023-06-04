@@ -1,0 +1,22 @@
+.imgcontainer {
+  padding-top: 10px;
+  width: 100%;
+  text-align: center;
+}
+.container {
+  width: 15rem;
+  img {
+    width: 70%;
+    border-color: grey;
+    border-width: 1px;
+    vertical-align: center;
+    border-radius: 10px;
+    margin: 2px;
+  }
+  h6 {
+    color: grey;
+  }
+  a {
+    width: 100%;
+  }
+}
