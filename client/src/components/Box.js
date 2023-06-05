@@ -2,7 +2,6 @@ import React, { useEffect } from "react";
 import * as THREE from "three";
 import styles from "./Box.module.scss";
 import GUI from "lil-gui";
-import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 export function Box() {
   useEffect(() => {
@@ -38,34 +37,84 @@ export function Box() {
       }
     }
 
+    /*  function makeXYZGUI(gui, vector3, name, onChangeFn) {
+      const folder = gui.addFolder(name);
+      folder.add(vector3, "x", -10, 10).onChange(onChangeFn);
+      folder.add(vector3, "y", 0, 10).onChange(onChangeFn);
+      folder.add(vector3, "z", -10, 10).onChange(onChangeFn);
+      folder.open();
+    } */
+
+    class ColorGUIHelper {
+      constructor(object, prop) {
+        this.object = object;
+        this.prop = prop;
+      }
+      get value() {
+        return `#${this.object[this.prop].getHexString()}`;
+      }
+      set value(hexString) {
+        this.object[this.prop].set(hexString);
+      }
+    }
+
     const canvas = document.querySelector("#c");
     if (canvas.getContext) {
       // rendu
       const renderer = new THREE.WebGLRenderer({ antialias: true, canvas });
-
+      renderer.shadowMap.enabled = true;
       // camera
       const fov = 20;
       const aspect = 2; // the canvas default
       const near = 1;
       const far = 10000;
 
+      const color = 0xffffff;
+      const intensity = 1;
+      const light = new THREE.DirectionalLight(color, intensity);
+      light.position.set(0, 0, 0);
+
+      const colorMoonLight = 0xffffff;
+      const moonlight = new THREE.DirectionalLight(colorMoonLight, intensity);
+      moonlight.position.set(0, 0, 0);
+
       // scene
       const scene = new THREE.Scene();
-      {
-        const color = 0xffffff;
-        const intensity = 3;
-        const light = new THREE.PointLight(color, intensity);
-        scene.add(light);
+      scene.add(light);
+      scene.add(moonlight);
+
+      const helper = new THREE.DirectionalLightHelper(light);
+      scene.add(helper);
+
+      function updateLight() {
+        light.target.updateMatrixWorld();
+        helper.update();
       }
+      updateLight();
+
+      /* gui.addColor(new ColorGUIHelper(light, "color"), "value").name("color");
+      gui.add(light, "intensity", 0, 2, 0.01);
+      makeXYZGUI(gui, light.position, "position", updateLight);
+      makeXYZGUI(gui, light.target.position, "target", updateLight); */
 
       // SUN ********************************************
       // un tableau d'objets dont la rotation à mettre à jour
+
+      const loader = new THREE.TextureLoader();
+
+      const sunMaterial = new THREE.MeshBasicMaterial({
+        map: loader.load("textures/map_sun.jpg"),
+      });
+
+      const bgTexture = loader.load("textures/stars.jpg");
+      scene.background = bgTexture;
+
       const objects = [];
 
       // utilise une seule sphère pour tout
       const sunradius = 1;
-      const sunwidthSegments = 24;
-      const sunheightSegments = 24;
+      const sunwidthSegments = 64;
+      const sunheightSegments = 64;
       const sunsphereGeometry = new THREE.SphereGeometry(
         sunradius,
         sunwidthSegments,
@@ -76,10 +125,6 @@ export function Box() {
       scene.add(solarSystem);
       objects.push(solarSystem);
 
-      const sunMaterial = new THREE.MeshPhongMaterial({
-        emissive: 0xffff00,
-        //wireframe: true,
-      });
       const sunMesh = new THREE.Mesh(sunsphereGeometry, sunMaterial);
       sunMesh.scale.set(5, 5, 5); // agrandit le soleil
       solarSystem.add(sunMesh);
@@ -90,10 +135,12 @@ export function Box() {
       solarSystem.add(earthOrbit);
       objects.push(earthOrbit);
 
-      const earthMaterial = new THREE.MeshPhongMaterial({
-        color: 0x2233ff,
-        emissive: 0x112244,
-        //wireframe: true,
+      scene.add(light.target);
+      light.target = earthOrbit;
+
+      const earthMaterial = new THREE.MeshStandardMaterial({
+        map: loader.load("textures/earth.jpg"),
+        lightMap: light,
       });
 
       const earthMesh = new THREE.Mesh(sunsphereGeometry, earthMaterial);
@@ -104,13 +151,16 @@ export function Box() {
       const moonOrbit = new THREE.Object3D();
       moonOrbit.position.x = 2;
       earthOrbit.add(moonOrbit);
+      moonlight.target = moonOrbit;
 
-      const moonMaterial = new THREE.MeshPhongMaterial({
-        color: 0x888888,
-        emissive: 0x222222,
+      const moonMaterial = new THREE.MeshStandardMaterial({
+        map: loader.load("textures/moon.jpg"),
+        lightMap: moonlight,
       });
+
       const moonMesh = new THREE.Mesh(sunsphereGeometry, moonMaterial);
       moonMesh.scale.set(0.5, 0.5, 0.5);
+      moonMesh.receiveShadow = true;
       moonOrbit.add(moonMesh);
       objects.push(moonMesh);
 
@@ -126,6 +176,12 @@ export function Box() {
       makeAxisGrid(moonOrbit, "moonOrbit");
       makeAxisGrid(moonMesh, "moonMesh");
 
+      gui.addColor(new ColorGUIHelper(light, "color"), "value").name("color");
+      gui.add(light, "intensity", 0, 2, 0.01);
+      gui.add(light.target.position, "x", -10, 10);
+      gui.add(light.target.position, "z", -10, 10);
+      gui.add(light.target.position, "y", 0, 10);
+
       const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
       //camera.position.z = 2;
 
@@ -136,7 +192,7 @@ export function Box() {
 
       // Animation
       function render(time, ndx) {
-        time *= 0.0001; // convertit le temps en secondes
+        time *= 0.0002; // convertit le temps en secondes
         //if (camera.position.y < 150) camera.position.y += time * 0.001;
         if (resizeRendererToDisplaySize(renderer)) {
           const canvas = renderer.domElement;
@@ -147,6 +203,7 @@ export function Box() {
         objects.forEach((obj) => {
           obj.rotation.y = time;
         });
+
         renderer.render(scene, camera);
 
         requestAnimationFrame(render);
