@@ -126,7 +126,7 @@ export function Box() {
       objects.push(solarSystem);
 
       const sunMesh = new THREE.Mesh(sunsphereGeometry, sunMaterial);
-      sunMesh.scale.set(5, 5, 5); // agrandit le soleil
+      sunMesh.scale.set(4, 4, 4); // agrandit le soleil
       solarSystem.add(sunMesh);
       objects.push(sunMesh);
 
